@@ -1,0 +1,15 @@
+# Compiled Libraries
+*.so
+*.o
+
+# Autocreated source files
+moc_*
+qrc_*
+ui_*
+Makefile
+
+
+# User created directories
+build/
+cache/
+ink_coverage
