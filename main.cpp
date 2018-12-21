@@ -50,10 +50,10 @@ MainWindow:: setPageRange()
 void
 MainWindow:: selectFile()
 {
-    QString filepath = QFileDialog::getOpenFileName(this, "Select PDF file");
-    if (!filepath.isEmpty()){
+    QString filepath = QFileDialog::getOpenFileName(this, "Select PDF file",
+                        QString(), "PDF Files (*.pdf);;All Files (*)");
+    if (!filepath.isEmpty())
         setFilename(filepath);
-    }
 }
 
 void
