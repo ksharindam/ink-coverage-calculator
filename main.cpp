@@ -5,6 +5,7 @@
 #include <QPixmap>
 #include <QSizePolicy>
 #include <cmath>
+#include <QFontMetrics>
 
 MainWindow:: MainWindow()
 {
@@ -12,7 +13,7 @@ MainWindow:: MainWindow()
     thumbnail = new QLabel(this);
     thumbnail->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     verticalLayout->addWidget(thumbnail, 0, Qt::AlignHCenter);
-    connect(pageNoBox, SIGNAL(valueChanged(int)), this, SLOT(setPageRange()));
+    connect(pageNoBox, SIGNAL(valueChanged(int)), this, SLOT(onStartPageChange()));
     connect(calculateBtn, SIGNAL(clicked()), this, SLOT(calculate()));
     connect(chooseFileBtn, SIGNAL(clicked()), this, SLOT(selectFile()));
     thread0 = new QThread(this);
@@ -38,20 +39,30 @@ MainWindow:: MainWindow()
     thread0->start();
     thread1->start();
     thread2->start();
+    timer = new QTimer(this);
+    timer->setSingleShot(true);
+    connect(timer, SIGNAL(timeout()), this, SLOT(requestInfo()));
 }
 
 void
-MainWindow:: setPageRange()
+MainWindow:: onStartPageChange()
 {
     pageNoBox->setMaximum(numPages);
     pagesBox->setMaximum(numPages-pageNoBox->value()+1);
+    timer->start(1000);
+}
+
+void
+MainWindow:: requestInfo()
+{
+    emit infoRequested(pageNoBox->value()-1);
 }
 
 void
 MainWindow:: selectFile()
 {
     QString filepath = QFileDialog::getOpenFileName(this, "Select PDF file",
-                        QString(), "PDF Files (*.pdf);;All Files (*)");
+                        filename, "PDF Files (*.pdf);;All Files (*)");
     if (!filepath.isEmpty())
         setFilename(filepath);
 }
@@ -61,7 +72,7 @@ MainWindow:: setFilename(QString filepath)
 {
     filename = filepath;
     QFileInfo fileinfo(filepath);
-    filenameLabel->setText(fileinfo.fileName());
+    setElidedText(filenameLabel, fileinfo.fileName());
     emit loadDocRequested(filename);
     emit infoRequested(pageNoBox->value()-1);
 }
@@ -70,6 +81,7 @@ void
 MainWindow:: calculate()
 {
     result = 0;
+    count_result = 0;
     int start_page_no = pageNoBox->value()-1;
     int pages = pagesBox->value();
     int dpi = dpiBox->value();
@@ -82,16 +94,22 @@ void
 MainWindow:: onResultFound(int /*page_no*/, float value)
 {
     //qDebug("%i %f", page_no, value);
+    count_result++;
     result += value;
-    value = result/pagesBox->value();
-    resultLabel->setText(QString("Page Coverage is   %1%").arg(roundOff(value,1)));
+    if (count_result == pagesBox->value()) {
+        value = result/pagesBox->value();
+        resultLabel->setText(QString("Page Coverage is   %1%").arg(roundOff(value,1)));
+        return;
+    }
+    resultLabel->setText("Calculating Page Coverage ...");
 }
 
 void
 MainWindow:: setInfo(int total_pages, QImage img)
 {
     numPages = total_pages;
-    setPageRange();
+    pageNoBox->setMaximum(numPages);
+    pagesBox->setMaximum(numPages-pageNoBox->value()+1);
     thumbnail->setPixmap(QPixmap::fromImage(img));
 }
 
@@ -137,6 +155,12 @@ float roundOff(float num, int dec)
     double m = (num < 0.0) ? -1.0 : 1.0;   // check if input is negative
     double pwr = pow(10, dec);
     return float(floor((double)num * m * pwr + 0.5) / pwr) * m;
+}
+
+void setElidedText(QLabel *label, QString text)
+{
+    QString elidedText(QFontMetrics(label->font()).elidedText(text, Qt::ElideMiddle, label->width()-2));
+    label->setText(elidedText);
 }
 
 // The main function
