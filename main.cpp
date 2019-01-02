@@ -88,6 +88,7 @@ MainWindow:: calculate()
     for (int i=start_page_no;i<start_page_no+pages;++i){
         emit calculateRequested(i, dpi);
     }
+    resultLabel->setText("Calculating Page Coverage ...");
 }
 
 void
@@ -101,7 +102,6 @@ MainWindow:: onResultFound(int /*page_no*/, float value)
         resultLabel->setText(QString("Page Coverage is   %1%").arg(roundOff(value,1)));
         return;
     }
-    resultLabel->setText("Calculating Page Coverage ...");
 }
 
 void
