@@ -13,6 +13,9 @@ MainWindow:: MainWindow()
     thumbnail = new QLabel(this);
     thumbnail->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     verticalLayout->addWidget(thumbnail, 0, Qt::AlignHCenter);
+    QPixmap pm(170, 254);
+    pm.fill();
+    thumbnail->setPixmap(pm);
     connect(pageNoBox, SIGNAL(valueChanged(int)), this, SLOT(onStartPageChange()));
     connect(calculateBtn, SIGNAL(clicked()), this, SLOT(calculate()));
     connect(chooseFileBtn, SIGNAL(clicked()), this, SLOT(selectFile()));
