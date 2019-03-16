@@ -1,5 +1,5 @@
 #ifndef MAIN_H
-#define MAIN
+#define MAIN_H
 
 #include <QDialog>
 #include <QLabel>
