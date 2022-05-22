@@ -6,7 +6,7 @@
 #include <QString>
 #include <QThread>
 #include <QTimer>
-#include <poppler-qt4.h>
+#include <poppler-qt5.h>
 #include "ui_mainwindow.h"
 
 QT_BEGIN_NAMESPACE

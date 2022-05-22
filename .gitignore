@@ -2,11 +2,12 @@
 *.so
 *.o
 
-# Autocreated source files
+# Autocreated files
 moc_*
 qrc_*
 ui_*
 Makefile
+.qmake.stash
 
 
 # User created directories

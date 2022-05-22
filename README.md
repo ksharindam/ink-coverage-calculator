@@ -4,12 +4,12 @@ Calculate ink coverage for printing in grayscale
 
 
 **Runtime Dependency**  
-* libqtcore4, libqtgui4  
-* libpoppler-qt4-4  
+* libqt5core5a, libqt5gui5  
+* libpoppler-qt5-1  
 
 **Build Dependency**  
-* libqt4-dev  
-* libpoppler-qt4-dev  
+* qtbase5-dev  
+* libpoppler-qt5-dev  
 
 ### Build and Install
 To build, install dependencies and run following commands...  
