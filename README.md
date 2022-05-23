@@ -25,3 +25,8 @@ To run after installing, type command..
   `ink_coverage`  
 Or  
   `ink_coverage file.pdf`  
+
+### Screenshot
+
+![Main Window](Screenshot.jpg)  
+

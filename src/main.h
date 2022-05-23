@@ -14,6 +14,8 @@ QT_BEGIN_NAMESPACE
 float roundOff(float num, int dec);
 void setElidedText(QLabel *label, QString text);
 
+void rgb2cmyk(float r, float g, float b, float &c, float &m, float &y, float &k);
+
 class Calculator : public QObject
 {
     Q_OBJECT
@@ -27,15 +29,15 @@ public slots:
     void calculate(int page_no, int dpi);
 signals:
     void infoReady(int total_pages, QImage);
-    void resultReady(int page_no, float value);
+    void resultReady(int page_no, float C, float M, float Y, float K, float monoK);
 };
 
 class MainWindow : public QDialog, Ui_MainWindow
 {
     Q_OBJECT
 public:
-    float result=0, count_result=0;
-    int numPages;
+    float resC, resM, resY, resK, resMonoK;
+    int numPages, count_result;
     QString filename = QString();
     QThread *thread0, *thread1, *thread2;
     Calculator *calc0, *calc1, *calc2;
@@ -49,7 +51,7 @@ public slots:
     void calculate();
     void requestInfo();
     void setInfo(int total_pages, QImage thumbnail);
-    void onResultFound(int page_no, float value);
+    void onResultFound(int page_no, float C, float M, float Y, float K, float monoK);
 signals:
     void infoRequested(int);
     void loadDocRequested(QString);

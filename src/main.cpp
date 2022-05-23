@@ -7,6 +7,11 @@
 #include <cmath>
 #include <QFontMetrics>
 
+#define MAX(a,b) ({ __typeof__ (a) _a = (a); \
+                    __typeof__ (b) _b = (b); \
+                    _a > _b ? _a : _b; })
+
+
 MainWindow:: MainWindow()
 {
     setupUi(this);
@@ -32,13 +37,17 @@ MainWindow:: MainWindow()
     connect(calc0, SIGNAL(infoReady(int, QImage)), this, SLOT(setInfo(int, QImage)));
     connect(this, SIGNAL(loadDocRequested(QString)), calc0, SLOT(loadDoc(QString)));
     connect(this, SIGNAL(calculateRequested(int,int)), calc0, SLOT(calculate(int,int)));
-    connect(calc0, SIGNAL(resultReady(int,float)), this, SLOT(onResultFound(int,float)));
+    connect(calc0, SIGNAL(resultReady(int,float,float,float,float,float)), this,
+                    SLOT(onResultFound(int,float,float,float,float,float)));
     connect(this, SIGNAL(loadDocRequested(QString)), calc1, SLOT(loadDoc(QString)));
     connect(this, SIGNAL(calculateRequested(int,int)), calc1, SLOT(calculate(int,int)));
-    connect(calc1, SIGNAL(resultReady(int,float)), this, SLOT(onResultFound(int,float)));
+    connect(calc1, SIGNAL(resultReady(int,float,float,float,float,float)), this,
+                    SLOT(onResultFound(int,float,float,float,float,float)));
     connect(this, SIGNAL(loadDocRequested(QString)), calc2, SLOT(loadDoc(QString)));
     connect(this, SIGNAL(calculateRequested(int,int)), calc2, SLOT(calculate(int,int)));
-    connect(calc2, SIGNAL(resultReady(int,float)), this, SLOT(onResultFound(int,float)));
+    connect(calc2, SIGNAL(resultReady(int,float,float,float,float,float)), this,
+                    SLOT(onResultFound(int,float,float,float,float,float)));
+    connect(closeBtn, SIGNAL(clicked()), this, SLOT(close()));
     thread0->start();
     thread1->start();
     thread2->start();
@@ -78,12 +87,23 @@ MainWindow:: setFilename(QString filepath)
     setElidedText(filenameLabel, fileinfo.fileName());
     emit loadDocRequested(filename);
     emit infoRequested(pageNoBox->value()-1);
+    colorC->setText("0%");
+    colorM->setText("0%");
+    colorY->setText("0%");
+    colorK->setText("0%");
+    monoK->setText("0%");
 }
 
 void
 MainWindow:: calculate()
 {
-    result = 0;
+    if (filename.isEmpty())
+        return;
+    resC = 0;
+    resM = 0;
+    resY = 0;
+    resK = 0;
+    resMonoK = 0;
     count_result = 0;
     int start_page_no = pageNoBox->value()-1;
     int pages = pagesBox->value();
@@ -91,19 +111,26 @@ MainWindow:: calculate()
     for (int i=start_page_no;i<start_page_no+pages;++i){
         emit calculateRequested(i, dpi);
     }
-    resultLabel->setText("Calculating Page Coverage ...");
+    statusbar->setText("Calculating Page Coverage ...");
 }
 
 void
-MainWindow:: onResultFound(int /*page_no*/, float value)
+MainWindow:: onResultFound(int /*page_no*/, float C, float M, float Y, float K, float grayK)
 {
     //qDebug("%i %f", page_no, value);
     count_result++;
-    result += value;
+    resC += C;
+    resM += M;
+    resY += Y;
+    resK += K;
+    resMonoK += grayK;
     if (count_result == pagesBox->value()) {
-        value = result/pagesBox->value();
-        resultLabel->setText(QString("Page Coverage is   %1%").arg(roundOff(value,1)));
-        return;
+        colorC->setText(QString("%1%").arg(resC/count_result));
+        colorM->setText(QString("%1%").arg(resM/count_result));
+        colorY->setText(QString("%1%").arg(resY/count_result));
+        colorK->setText(QString("%1%").arg(resK/count_result));
+        monoK->setText(QString("%1%").arg(resMonoK/count_result));
+        statusbar->setText("Done !");
     }
 }
 
@@ -141,15 +168,50 @@ Calculator :: calculate(int page_no, int dpi)
     Poppler::Page *page = doc->page(page_no);
     if (! page) return;
     QImage img = page->renderToImage(dpi, dpi);
-    double val = 0;
-    for (int y=0;y<img.height();y++) {
+    double sumC=0, sumM=0, sumY=0, sumK=0;
+    double sumMonoK = 0;
+    for (int y=0; y<img.height(); y++) {
         QRgb* line = ((QRgb*)img.constScanLine(y));
-        for (int x=0;x<img.width();x++) {
-            val += 1-qGray(line[x])/255;
+        float C,M,Y,K;
+        for (int x=0; x<img.width(); x++) {
+            rgb2cmyk(qRed(line[x])/255.0, qGreen(line[x])/255.0, qBlue(line[x])/255.0, C,M,Y,K);
+            sumC += C;
+            sumM += M;
+            sumY += Y;
+            sumK += K;
+            sumMonoK += 1 - qGray(line[x])/255.0;
         }
     }
-    float coverage = val*100.0/(img.width()*img.height());
-    emit resultReady(page_no, coverage);
+    int pixels_count = img.width()*img.height();
+    float resultC = 100.0*sumC/pixels_count;
+    float resultM = 100.0*sumM/pixels_count;
+    float resultY = 100.0*sumY/pixels_count;
+    float resultK = 100.0*sumK/pixels_count;
+    float resultMonoK = 100.0*sumMonoK/pixels_count;
+    emit resultReady(page_no, resultC, resultM, resultY, resultK, resultMonoK);
+}
+
+/* Conversion Formula
+K = 1.0 - max(R, G, B)
+C = (1-R-K)/(1-K)
+M = (1-G-K)/(1-K)
+Y = (1-B-K)/(1-K)
+*/
+// r,g,b input and c,m,y,k output is in 0-1.0 range
+void rgb2cmyk(float r, float g, float b, float &c, float &m, float &y, float &k)
+{
+    float rgbMax = MAX(r, MAX(g, b));
+    if (rgbMax==0){
+        c = 0;
+        m = 0;
+        y = 0;
+        k = 1.0;
+        return;
+    }
+    c = 1.0 - r/rgbMax;
+    m = 1.0 - g/rgbMax;
+    y = 1.0 - b/rgbMax;
+    k = 1.0 - rgbMax;
 }
 
 
